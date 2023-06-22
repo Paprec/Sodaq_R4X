@@ -183,6 +183,15 @@ public:
     void setDiag(Print &print) { _diagPrint = &print; }
     void setDiag(Print *print) { _diagPrint = print; }
 
+    // Reads a line from the modem UART into the input buffer.
+    // Returns the number of bytes read.
+    size_t readLn(uint32_t timeout = 1000) { return readLn(_inputBuffer, _inputBufferSize, timeout); };
+
+    // Reads a line from the modem UART into the "buffer". The line terminator is not
+    // written into the buffer. The buffer is terminated with null.
+    // Returns the number of bytes read, not including the null terminator.
+    size_t readLn(char* buffer, size_t size, uint32_t timeout = 1000);
+
 protected:
     /***********************************************************/
     /* UART */
@@ -234,14 +243,14 @@ protected:
     // Returns the number of characters written to the buffer.
     size_t readBytes(uint8_t* buffer, size_t length, uint32_t timeout = 1000);
 
-    // Reads a line from the modem UART into the input buffer.
-    // Returns the number of bytes read.
-    size_t readLn(uint32_t timeout = 1000) { return readLn(_inputBuffer, _inputBufferSize, timeout); };
+    // // Reads a line from the modem UART into the input buffer.
+    // // Returns the number of bytes read.
+    // size_t readLn(uint32_t timeout = 1000) { return readLn(_inputBuffer, _inputBufferSize, timeout); };
 
-    // Reads a line from the modem UART into the "buffer". The line terminator is not
-    // written into the buffer. The buffer is terminated with null.
-    // Returns the number of bytes read, not including the null terminator.
-    size_t readLn(char* buffer, size_t size, uint32_t timeout = 1000);
+    // // Reads a line from the modem UART into the "buffer". The line terminator is not
+    // // written into the buffer. The buffer is terminated with null.
+    // // Returns the number of bytes read, not including the null terminator.
+    // size_t readLn(char* buffer, size_t size, uint32_t timeout = 1000);
 
     // Write a byte
     size_t writeByte(uint8_t value);
