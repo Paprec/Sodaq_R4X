@@ -192,6 +192,8 @@ public:
     // Returns the number of bytes read, not including the null terminator.
     size_t readLn(char* buffer, size_t size, uint32_t timeout = 1000);
 
+    const char* getInputBuffer() const { return _inputBuffer; }
+
 protected:
     /***********************************************************/
     /* UART */
@@ -219,8 +221,6 @@ protected:
     // Initializes the input buffer and makes sure it is only initialized once.
     // Safe to call multiple times.
     void initBuffer();
-
-    const char* getInputBuffer() const { return _inputBuffer; }
 
     bool waitForPrompt(char prompt, uint32_t timeout);
 
