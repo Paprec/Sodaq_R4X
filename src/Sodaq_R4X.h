@@ -345,12 +345,14 @@ public:
 
     // If the file already exists, the data will be appended to the file already stored in the file system.
     bool   writeFile(const char* filename, const uint8_t* buffer, size_t size);
+    
+    bool   checkURC(const char* buffer);
+    tribool_t   _httpRequestSuccessBit[HttpRequestTypesMAX] = {TriBoolUndefined};
 
 protected:
     uint32_t getNthValidBaudRate(size_t nth);
 
 private:
-    bool   checkURC(const char* buffer);
 
     bool   checkApn(const char* requiredAPN);
     bool   checkBandMasks(const char* bandMaskLTE, const char* bandMaskNB);
@@ -373,7 +375,6 @@ private:
      *****************************************************************************/
 
     uint32_t    _httpGetHeaderSize;
-    tribool_t   _httpRequestSuccessBit[HttpRequestTypesMAX];
     int8_t      _mqttLoginResult;
     int16_t     _mqttPendingMessages;
     int8_t      _mqttSubscribeReason;
