@@ -39,6 +39,15 @@ POSSIBILITY OF SUCH DAMAGE.
 #define SODAQ_MAX_SEND_MESSAGE_SIZE     512
 #define SODAQ_R4X_MAX_SOCKET_BUFFER     1024
 
+// Account for the reverse logic on the PWRON pin of the Arduino MKR
+#ifdef _VARIANT_SODAQ_SFF_// Sodaq SFF
+#define MODEM_ACTIVATE LOW
+#define MODEM_RELEASE  HIGH
+#else // Arduino MKR NB 1500
+#define MODEM_ACTIVATE HIGH
+#define MODEM_RELEASE  LOW
+#endif
+
 /**
  * The value for AT+URAT=
  *
