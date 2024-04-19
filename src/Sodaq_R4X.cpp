@@ -55,6 +55,7 @@ POSSIBILITY OF SUCH DAMAGE.
 
 #define STR_RESPONSE_SOCKET_PROMPT '@'
 #define STR_RESPONSE_FILE_PROMPT   '>'
+#define STR_RESPONSE_CONNECT_PROMPT'CONNECT'
 
 #define NIBBLE_TO_HEX_CHAR(i)  ((i <= 9) ? ('0' + i) : ('A' - 10 + i))
 #define HIGH_NIBBLE(i)         ((i >> 4) & 0x0F)
@@ -251,11 +252,11 @@ bool Sodaq_R4X::off()
     }
 
     // Safety command to shutdown, response is ignored
-    if (isOn()) {
-        println("AT+CPWROFF");
-        readResponse(NULL, 0, NULL, 1000);
-        sodaq_wdt_safe_delay(POWER_OFF_DELAY);
-    }
+    // if (isOn()) {
+    //     println("AT+CPWROFF");
+    //     readResponse(NULL, 0, NULL, 1000);
+    //     sodaq_wdt_safe_delay(POWER_OFF_DELAY);
+    // }
 
     // No matter if it is on or off, turn it off.
     _onoff->off();
@@ -1345,6 +1346,37 @@ size_t Sodaq_R4X::socketWrite(int8_t socketID, const uint8_t* buffer, size_t siz
     return sentLength;
 }
 
+/**
+ * Write a buffer to a TCP socket
+ */
+size_t Sodaq_R4X::socketDLWrite(int8_t socketID, const uint8_t* buffer, size_t size)
+{
+    if (!is_socketID_valid(socketID)) {
+        return 0;
+    }
+
+    print("AT+USODL=");
+    println(socketID);
+
+    /* Wait for the prompt. It should come in immediately.
+     */
+    if (!waitForConnectPrompt(100)) {
+        return 0;
+    }
+
+    delay(51);
+
+    for (size_t i = 0; i < size; i++) {
+        print(static_cast<char>(NIBBLE_TO_HEX_CHAR(HIGH_NIBBLE(buffer[i]))));
+        print(static_cast<char>(NIBBLE_TO_HEX_CHAR(LOW_NIBBLE(buffer[i]))));
+    }
+    /* Indicate that we need a new diag prolog (">>") next time we send a command
+     */
+    dbprintln();
+
+    return 0;
+}
+
 
 /******************************************************************************
 * MQTT
@@ -1371,8 +1403,12 @@ bool Sodaq_R4X::mqttLogin(uint32_t timeout)
     uint32_t startTime = millis();
 
     if ((readResponse(buffer, sizeof(buffer), "+UMQTTC: ", timeout) != GSMResponseOK) || !startsWith("1,1", buffer)) {
+        SerialUSB.print("----");
+        SerialUSB.println(buffer);
         return false;
     }
+    SerialUSB.print("++++");
+    SerialUSB.println(buffer);
 
     // check URC synchronously
     while ((_mqttLoginResult == -1) && !is_timedout(startTime, timeout)) {
@@ -2587,15 +2623,16 @@ bool Sodaq_R4X::checkURC(const char* buffer)
     }
 
     if (sscanf(buffer, "+UUHTTPCR: 0,%d,%d", &param1, &param2) == 2) {
-        static uint8_t mapping[] = {
-            HEAD,   // 0
-            GET,    // 1
-            DELETE, // 2
-            PUT,    // 3
-            POST,   // 4
-        };
+        // static uint8_t mapping[] = {
+        //     HEAD,   // 0
+        //     GET,    // 1
+        //     DELETE, // 2
+        //     PUT,    // 3
+        //     POST,   // 4
+        // };
 
-        int requestType = param1 < (int)sizeof(mapping) ? mapping[param1] : -1;
+        // int requestType = param1 < (int)sizeof(mapping) ? mapping[param1] : -1;
+        int requestType = param1 <= 5 ? param1 : -1; // There are 6 types of http_command, from 0 to 5
         if (requestType >= 0) {
             debugPrint("Unsolicited: UUHTTPCR: ");
             debugPrint(requestType);
@@ -2778,6 +2815,14 @@ bool Sodaq_R4X::waitForFilePrompt(uint32_t timeout)
     return waitForPrompt(STR_RESPONSE_FILE_PROMPT, timeout);
 }
 
+/**
+ * Wait for the Socket Prompt 'CONNECT'
+ */
+bool Sodaq_R4X::waitForConnectPrompt(uint32_t timeout)
+{
+    return waitForPrompt(STR_RESPONSE_CONNECT_PROMPT, timeout);
+}
+
 
 /******************************************************************************
  * OnOff
@@ -2794,7 +2839,7 @@ Sodaq_SARA_R4XX_OnOff::Sodaq_SARA_R4XX_OnOff()
     pinMode(SARA_TX_ENABLE, OUTPUT);
 
     pinMode(SARA_R4XX_TOGGLE, INPUT);
-    digitalWrite(SARA_R4XX_TOGGLE, HIGH);
+    digitalWrite(SARA_R4XX_TOGGLE, MODEM_RELEASE);
 #endif
 
     _onoff_status = false;
@@ -2816,12 +2861,12 @@ void Sodaq_SARA_R4XX_OnOff::on()
      * know it must be in power off mode.
      */
     pinMode(SARA_R4XX_TOGGLE, OUTPUT);
-    digitalWrite(SARA_R4XX_TOGGLE, LOW);
+    digitalWrite(SARA_R4XX_TOGGLE, MODEM_ACTIVATE);
     // TODO Can we reduce this to something like 200ms?
     sodaq_wdt_safe_delay(2000);
 
     /*
-     * Make the pin INPUT and thus it will go HIGH due to the pull-up
+     * Make the pin INPUT and thus it will go MODEM_RELEASE due to the pull-up
      * in the R4X.
      */
     pinMode(SARA_R4XX_TOGGLE, INPUT);
@@ -2838,6 +2883,12 @@ void Sodaq_SARA_R4XX_OnOff::off()
      */
     digitalWrite(SARA_ENABLE, LOW);
     digitalWrite(SARA_TX_ENABLE, LOW);
+
+    // Added poweroff sequence using the PWR_ON line
+    pinMode(SARA_R4XX_TOGGLE, OUTPUT);
+    digitalWrite(SARA_R4XX_TOGGLE, MODEM_ACTIVATE);
+    sodaq_wdt_safe_delay(1600); // According to doc 4.2.9 PWR_ON pin
+    pinMode(SARA_R4XX_TOGGLE, INPUT);
 #endif
 
     _onoff_status = false;

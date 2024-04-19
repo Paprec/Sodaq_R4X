@@ -222,6 +222,7 @@ public:
     // Required for TCP, optional for UDP (for UDP socketConnect() + socketWrite() == socketSend())
     bool   socketConnect(int8_t socketID, const char* remoteHost, const uint16_t remotePort);
     size_t socketWrite(int8_t socketID, const uint8_t* buffer, size_t size);
+    size_t socketDLWrite(int8_t socketID, const uint8_t* buffer, size_t size);
 
     // TCP only
     bool   socketWaitForRead(int8_t socketID, uint32_t timeout = SODAQ_UBLOX_DEFAULT_SOCKET_TIMEOUT);
@@ -400,6 +401,7 @@ private:
 
     bool waitForSocketPrompt(uint32_t timeout);
     bool waitForFilePrompt(uint32_t timeout);
+    bool waitForConnectPrompt(uint32_t timeout);
 };
 
 #endif
